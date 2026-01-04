@@ -113,7 +113,7 @@ if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
 
 Write-Host "[ INFO ] Creating runtime executable script (ignite)."
 if ($OS_CHOICE -eq "1") {
-    $batContent = "@echo off`ntitle LlamaPorter - $MODEL_ID`nchcp 65001 > nul`ncd /d ""%~dp0""`necho Starting Local LLM...`n$TARGET_ENGINE -m $firstModelFile`npause"
+    $batContent = "@echo off`ntitle LlamaPorter - $MODEL_ID`nchcp 65001 > nul`ncd /d ""%~dp0""`necho Starting Local LLM...`n$TARGET_ENGINE -m $firstModelFile"
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.bat", $batContent, [System.Text.Encoding]::ASCII)
     Write-Host "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 } else {

@@ -120,7 +120,6 @@ chcp 65001 > nul
 cd /d "%~dp0"
 echo Starting Local LLM...
 $TARGET_ENGINE -m $FIRST_MODEL_FILE
-pause
 EOF
     echo "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 else
