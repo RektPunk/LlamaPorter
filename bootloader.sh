@@ -43,7 +43,7 @@ mkdir -p "$REL"
 
 PID_ENG=""
 if [ -f "llamafile" ]; then
-    echo "[ INFO ] Found local 'llamafile' binary. It will be copied to the target folder."
+    echo "[ INFO ] Found local 'llamafile' binary."
 else
     if [ ! -f "$REL/$TARGET_ENGINE" ]; then
         echo "[ INFO ] No local engine found. Initiating download..."

@@ -43,18 +43,20 @@ $REL = "${MODEL_ID}_${OS_SUFFIX}"
 if (-not (Test-Path $REL)) { New-Item -ItemType Directory -Path $REL | Out-Null }
 
 if (Test-Path "llamafile") {
-    Write-Host "[ INFO ] Found local 'llamafile' binary. It will be copied to the target folder."
+    Write-Host "[ INFO ] Found local 'llamafile' binary."
 } else {
     if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
         Write-Host "[ INFO ] No local engine found. Initiating download..."
         Start-Job -Name "EngineDownload" -ScriptBlock {
-            param($url, $out) Invoke-WebRequest -Uri $url -OutFile $out
-        } -ArgumentList $ENGINE_URL, "llamafile" | Out-Null
-    }
-    else {
+            param($url, $root) 
+            Set-Location $root
+            Invoke-WebRequest -Uri $url -OutFile "llamafile"
+        } -ArgumentList $ENGINE_URL, $PSScriptRoot | Out-Null
+    } else {
         Write-Host "[ INFO ] Engine binary already exists in the target folder."
     }
 }
+
 
 $urls = Get-Content $MANIFEST_PATH | Where-Object { $_ -and -not $_.StartsWith("#") }
 $firstModelFile = ""
@@ -66,10 +68,11 @@ foreach ($url in $urls) {
     if (-not (Test-Path "$REL/$fileName")) {
         Write-Host "[ INFO ] Queuing Download: $fileName"
         Start-Job -Name "Download-$fileName" -ScriptBlock {
-            param($u, $p) 
+            param($u, $p, $root) 
+            Set-Location $root
             $ProgressPreference = 'SilentlyContinue'
             Invoke-WebRequest -Uri $u -OutFile $p
-        } -ArgumentList $url, "$REL/$fileName" | Out-Null
+        } -ArgumentList $url, "$REL/$fileName", $PSScriptRoot | Out-Null
     } else {
         Write-Host "[ INFO ] File already exists: $fileName (Skipping)"
     }
@@ -113,8 +116,8 @@ if ($OS_CHOICE -eq "1") {
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.bat", $batContent, [System.Text.Encoding]::ASCII)
     Write-Host "[ SUCCESS ] Windows batch file 'ignite.bat' has been generated."
 } else {
-    $shContent = "#!/bin/bash`ncd ""$(dirname ""$0"")""`nchmod +x ./$TARGET_ENGINE`necho ""Starting Local LLM...""`n./$TARGET_ENGINE -m $firstModelFile"
-    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+$shContent = "#!/bin/bash`ncd ""$(dirname ""`$0"")""`nchmod +x ./$TARGET_ENGINE`necho ""Starting Local LLM...""`n./$TARGET_ENGINE -m $firstModelFile"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.sh", $shContent, $utf8NoBom)
     Write-Host "[ SUCCESS ] Unix shell script 'ignite.sh' has been generated."
 }
