@@ -16,14 +16,14 @@ fi
 ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
 
 clear
-echo "==========================================================="
-echo " LlamaPorter: $MODEL_ID"
-echo "==========================================================="
+echo "------------------------------------------------------------"
+echo "LlamaPorter: $MODEL_ID"
+echo "------------------------------------------------------------"
 echo "Please select the target Operating System for deployment:"
 echo " 1) Microsoft Windows (.bat format)"
 echo " 2) Linux or macOS (.sh format)"
 read -p " Selection (1-2): " OS_CHOICE
-echo "==========================================================="
+echo "------------------------------------------------------------"
 
 if [ "$OS_CHOICE" == "1" ]; then
     OS_SUFFIX="win"
@@ -135,6 +135,4 @@ EOF
     echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been generated."
 fi
 
-echo "==========================================================="
-echo "[ SUCCESS ] BUILD COMPLETE: ./${REL}/"
-echo "==========================================================="
+echo "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"

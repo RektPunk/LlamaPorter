@@ -17,14 +17,14 @@ if (-not (Test-Path $MANIFEST_PATH)) {
 $ENGINE_URL = "https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
 
 Clear-Host
-Write-Host "==========================================================="
+Write-Host "------------------------------------------------------------"
 Write-Host " LlamaPorter: $MODEL_ID"
-Write-Host "==========================================================="
+Write-Host "------------------------------------------------------------"
 Write-Host "Please select the target Operating System for deployment:"
 Write-Host " 1) Microsoft Windows (.bat format)"
 Write-Host " 2) Linux or macOS (.sh format)"
 $OS_CHOICE = Read-Host " Selection (1-2)"
-Write-Host "==========================================================="
+Write-Host "------------------------------------------------------------"
 
 if ($OS_CHOICE -eq "1") {
     $OS_SUFFIX = "win"
@@ -119,6 +119,4 @@ if ($OS_CHOICE -eq "1") {
     Write-Host "[ SUCCESS ] Unix shell script 'ignite.sh' has been generated."
 }
 
-Write-Host "==========================================================="
-Write-Host "[ SUCCESS ] BUILD COMPLETE: ./${REL}/"
-Write-Host "==========================================================="
+Write-Host "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"
