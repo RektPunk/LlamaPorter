@@ -14,7 +14,7 @@ LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM packages speci
         ```powershell
         powershell -ExecutionPolicy Bypass -File bootloader.ps1
         ```
-    Note: Once the build is complete, a distribution folder (e.g., `Phi-3-mini-win/` or `Phi-3-mini-unix/`) will be created.
+    Note: Once the build is complete, a distribution folder `{modelID}_{os}/` will be created.
 
 2. Run
 
@@ -26,4 +26,4 @@ LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM packages speci
 
     If you want to package a different model:
     - Change ID: Change the name in `.model` (e.g., qwen2.5-7b-instruct-q4_0).
-    - Add Manifest: Create `manifest/{Your-Model-ID}` and list GGUF URLs.
+    - Add Manifest: Create `manifest/{modelID}` and list GGUF URLs.
