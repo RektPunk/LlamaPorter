@@ -101,6 +101,7 @@ while ($true) {
     Start-Sleep -Milliseconds 500
 }
 Get-Job | Remove-Job
+Write-Host ""
 Write-Host "[ SUCCESS ] All resources are ready."
 
 if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
@@ -110,16 +111,16 @@ if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
     }
 }
 
-Write-Host "[ INFO ] Generating runtime executable script (Ignite)..."
+Write-Host "[ INFO ] Creating runtime executable script (ignite)."
 if ($OS_CHOICE -eq "1") {
     $batContent = "@echo off`ntitle LlamaPorter - $MODEL_ID`nchcp 65001 > nul`ncd /d ""%~dp0""`necho Starting Local LLM...`n$TARGET_ENGINE -m $firstModelFile`npause"
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.bat", $batContent, [System.Text.Encoding]::ASCII)
-    Write-Host "[ SUCCESS ] Windows batch file 'ignite.bat' has been generated."
+    Write-Host "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 } else {
 $shContent = "#!/bin/bash`ncd ""$(dirname ""`$0"")""`nchmod +x ./$TARGET_ENGINE`necho ""Starting Local LLM...""`n./$TARGET_ENGINE -m $firstModelFile"
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.sh", $shContent, $utf8NoBom)
-    Write-Host "[ SUCCESS ] Unix shell script 'ignite.sh' has been generated."
+    Write-Host "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 }
 
 Write-Host "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"

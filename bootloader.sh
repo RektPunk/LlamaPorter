@@ -46,7 +46,7 @@ if [ -f "llamafile" ]; then
     echo "[ INFO ] Found local 'llamafile' binary."
 else
     if [ ! -f "$REL/$TARGET_ENGINE" ]; then
-        echo "[ INFO ] No local engine found. Initiating download..."
+        echo "[ INFO ] No local engine found. Initiating download."
         curl -sL -o "llamafile" "$ENGINE_URL" &
         PID_ENG=$!
     else
@@ -58,7 +58,7 @@ URL_ARRAY=()
 PIDS=()
 FIRST_MODEL_FILE=""
 
-echo "[ INFO ] Reading manifest and preparing downloads..."
+echo "[ INFO ] Reading manifest and preparing download."
 while IFS= read -r line || [[ -n "$line" ]]; do
     URL=$(echo "$line" | xargs)
     [[ -z "$URL" || "$URL" == \#* ]] && continue
@@ -80,7 +80,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "$MANIFEST_PATH"
 
 echo "[ INFO ] Total files detected in manifest: ${#URL_ARRAY[@]}"
-echo "[ INFO ] Monitoring background download tasks..."
+echo "[ INFO ] Monitoring background download tasks."
 while :; do
     ALIVE_COUNT=0
     [ -n "$PID_ENG" ] && kill -0 $PID_ENG 2>/dev/null && ((ALIVE_COUNT++))
@@ -106,12 +106,12 @@ echo "[ SUCCESS ] All resources are ready."
 
 if [ ! -f "$REL/$TARGET_ENGINE" ]; then
     if [ -f "llamafile" ]; then
-        echo "[ INFO ] Copying engine binary to $REL..."
+        echo "[ INFO ] Copying engine binary to $REL."
         cp "llamafile" "$REL/$TARGET_ENGINE"
     fi
 fi
 
-echo "[ INFO ] Generating runtime executable script (Ignite)..."
+echo "[ INFO ] Creating runtime executable script (ignite)."
 if [ "$OS_CHOICE" == "1" ]; then
     cat << EOF > "$REL/ignite.bat"
 @echo off
@@ -122,7 +122,7 @@ echo Starting Local LLM...
 $TARGET_ENGINE -m $FIRST_MODEL_FILE
 pause
 EOF
-    echo "[ SUCCESS ] Windows batch file 'ignite.bat' has been generated."
+    echo "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 else
     cat << EOF > "$REL/ignite.sh"
 #!/bin/bash
@@ -132,7 +132,7 @@ echo "Starting Local LLM..."
 ./$TARGET_ENGINE -m $FIRST_MODEL_FILE
 EOF
     chmod +x "$REL/ignite.sh"
-    echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been generated."
+    echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 fi
 
 echo "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"
