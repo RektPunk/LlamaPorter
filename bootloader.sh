@@ -16,14 +16,14 @@ fi
 ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
 
 clear
-echo "==========================================================="
-echo " LlamaPorter: $MODEL_ID"
-echo "==========================================================="
+echo "------------------------------------------------------------"
+echo "LlamaPorter: $MODEL_ID"
+echo "------------------------------------------------------------"
 echo "Please select the target Operating System for deployment:"
 echo " 1) Microsoft Windows (.bat format)"
 echo " 2) Linux or macOS (.sh format)"
 read -p " Selection (1-2): " OS_CHOICE
-echo "==========================================================="
+echo "------------------------------------------------------------"
 
 if [ "$OS_CHOICE" == "1" ]; then
     OS_SUFFIX="win"
@@ -43,10 +43,10 @@ mkdir -p "$REL"
 
 PID_ENG=""
 if [ -f "llamafile" ]; then
-    echo "[ INFO ] Found local 'llamafile' binary. It will be copied to the target folder."
+    echo "[ INFO ] Found local 'llamafile' binary."
 else
     if [ ! -f "$REL/$TARGET_ENGINE" ]; then
-        echo "[ INFO ] No local engine found. Initiating download..."
+        echo "[ INFO ] No local engine found. Initiating download."
         curl -sL -o "llamafile" "$ENGINE_URL" &
         PID_ENG=$!
     else
@@ -58,7 +58,7 @@ URL_ARRAY=()
 PIDS=()
 FIRST_MODEL_FILE=""
 
-echo "[ INFO ] Reading manifest and preparing downloads..."
+echo "[ INFO ] Reading manifest and preparing download."
 while IFS= read -r line || [[ -n "$line" ]]; do
     URL=$(echo "$line" | xargs)
     [[ -z "$URL" || "$URL" == \#* ]] && continue
@@ -80,7 +80,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "$MANIFEST_PATH"
 
 echo "[ INFO ] Total files detected in manifest: ${#URL_ARRAY[@]}"
-echo "[ INFO ] Now monitoring background download tasks..."
+echo "[ INFO ] Monitoring background download tasks."
 while :; do
     ALIVE_COUNT=0
     [ -n "$PID_ENG" ] && kill -0 $PID_ENG 2>/dev/null && ((ALIVE_COUNT++))
@@ -88,29 +88,30 @@ while :; do
         if kill -0 "$pid" 2>/dev/null; then ((ALIVE_COUNT++)); fi
     done
 
-    ENG_SIZE=$(du -h "$REL/$TARGET_ENGINE" 2>/dev/null | awk '{print $1}')
-    MDL_SIZE=$(du -hc "$REL"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
+    if [ -f "llamafile" ]; then
+        ENG_SIZE=$(du -h "llamafile" | awk '{print $1}')
+    elif [ -f "$REL/$TARGET_ENGINE" ]; then
+        ENG_SIZE=$(du -h "$REL/$TARGET_ENGINE" | awk '{print $1}')
+    fi
 
+    MDL_SIZE=$(du -hc "$REL"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
     echo -ne "\r\033[K[ PROGRESS ] Engine: ${ENG_SIZE:-0B} | Models: ${MDL_SIZE:-0B} | Active Tasks: $ALIVE_COUNT"
 
     [ $ALIVE_COUNT -eq 0 ] && break
     sleep 0.5
 done
 wait
-
 echo
 echo "[ SUCCESS ] All resources are ready."
 
-
 if [ ! -f "$REL/$TARGET_ENGINE" ]; then
     if [ -f "llamafile" ]; then
-        echo "[ INFO ] Copying engine binary to $REL..."
+        echo "[ INFO ] Copying engine binary to $REL."
         cp "llamafile" "$REL/$TARGET_ENGINE"
     fi
 fi
 
-echo "[ INFO ] Generating runtime executable script (Ignite)..."
-
+echo "[ INFO ] Creating runtime executable script (ignite)."
 if [ "$OS_CHOICE" == "1" ]; then
     cat << EOF > "$REL/ignite.bat"
 @echo off
@@ -119,9 +120,8 @@ chcp 65001 > nul
 cd /d "%~dp0"
 echo Starting Local LLM...
 $TARGET_ENGINE -m $FIRST_MODEL_FILE
-pause
 EOF
-    echo "[ SUCCESS ] Windows batch file 'ignite.bat' has been generated."
+    echo "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 else
     cat << EOF > "$REL/ignite.sh"
 #!/bin/bash
@@ -131,9 +131,7 @@ echo "Starting Local LLM..."
 ./$TARGET_ENGINE -m $FIRST_MODEL_FILE
 EOF
     chmod +x "$REL/ignite.sh"
-    echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been generated."
+    echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 fi
 
-echo "==========================================================="
-echo "[ SUCCESS ] BUILD COMPLETE: ./${REL}/"
-echo "==========================================================="
+echo "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"

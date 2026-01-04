@@ -6,3 +6,4 @@ llamafile
 llamafile.exe
 
 *.gguf
+.DS_Store
