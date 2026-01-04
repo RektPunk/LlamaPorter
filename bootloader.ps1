@@ -117,7 +117,7 @@ if ($OS_CHOICE -eq "1") {
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.bat", $batContent, [System.Text.Encoding]::ASCII)
     Write-Host "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 } else {
-$shContent = "#!/bin/bash`ncd ""$(dirname ""`$0"")""`nchmod +x ./$TARGET_ENGINE`necho ""Starting Local LLM...""`n./$TARGET_ENGINE -m $firstModelFile"
+$shContent = "#!/bin/bash`ncd ""`$(dirname ""`$0"")""`nchmod +x ./$TARGET_ENGINE`necho ""Starting Local LLM...""`n./$TARGET_ENGINE -m $firstModelFile"
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.sh", $shContent, $utf8NoBom)
     Write-Host "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
