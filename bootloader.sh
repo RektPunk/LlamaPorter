@@ -80,7 +80,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "$MANIFEST_PATH"
 
 echo "[ INFO ] Total files detected in manifest: ${#URL_ARRAY[@]}"
-echo "[ INFO ] Now monitoring background download tasks..."
+echo "[ INFO ] Monitoring background download tasks..."
 while :; do
     ALIVE_COUNT=0
     [ -n "$PID_ENG" ] && kill -0 $PID_ENG 2>/dev/null && ((ALIVE_COUNT++))
@@ -88,19 +88,21 @@ while :; do
         if kill -0 "$pid" 2>/dev/null; then ((ALIVE_COUNT++)); fi
     done
 
-    ENG_SIZE=$(du -h "$REL/$TARGET_ENGINE" 2>/dev/null | awk '{print $1}')
-    MDL_SIZE=$(du -hc "$REL"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
+    if [ -f "llamafile" ]; then
+        ENG_SIZE=$(du -h "llamafile" | awk '{print $1}')
+    elif [ -f "$REL/$TARGET_ENGINE" ]; then
+        ENG_SIZE=$(du -h "$REL/$TARGET_ENGINE" | awk '{print $1}')
+    fi
 
+    MDL_SIZE=$(du -hc "$REL"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
     echo -ne "\r\033[K[ PROGRESS ] Engine: ${ENG_SIZE:-0B} | Models: ${MDL_SIZE:-0B} | Active Tasks: $ALIVE_COUNT"
 
     [ $ALIVE_COUNT -eq 0 ] && break
     sleep 0.5
 done
 wait
-
 echo
 echo "[ SUCCESS ] All resources are ready."
-
 
 if [ ! -f "$REL/$TARGET_ENGINE" ]; then
     if [ -f "llamafile" ]; then
@@ -110,7 +112,6 @@ if [ ! -f "$REL/$TARGET_ENGINE" ]; then
 fi
 
 echo "[ INFO ] Generating runtime executable script (Ignite)..."
-
 if [ "$OS_CHOICE" == "1" ]; then
     cat << EOF > "$REL/ignite.bat"
 @echo off
