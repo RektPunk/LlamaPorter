@@ -3,6 +3,7 @@ LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM packages speci
 
 ## Quick Start
 1. Build
+
     Run the builder appropriate for your Operating System:
     - macOS / Linux:
         ```bash
@@ -16,11 +17,13 @@ LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM packages speci
     Note: Once the build is complete, a distribution folder (e.g., `Phi-3-mini-win/` or `Phi-3-mini-unix/`) will be created.
 
 2. Run
+
     To start the AI, simply run the ignite script inside the generated folder:
     -  Windows: `ignite.bat`
     - macOS / Linux: `./ignite.sh`
 
 3. Customizing (Optional)
+
     If you want to package a different model:
     - Change ID: Change the name in `.model` (e.g., qwen2.5-7b-instruct-q4_0).
     - Add Manifest: Create `manifest/{Your-Model-ID}` and list GGUF URLs.
