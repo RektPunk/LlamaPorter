@@ -10,8 +10,7 @@ LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM packages speci
         ./bootloader.sh
         ```
     - Windows:
-        ```PowerShell
-        # Run in PowerShell
+        ```powershell
         powershell -ExecutionPolicy Bypass -File bootloader.ps1
         ```
     Once the build is complete, a folder like Phi-3-mini..._win or _unix will be created.
