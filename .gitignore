@@ -1,0 +1,8 @@
+# --- LlamaPorter Ignore Rules ---
+*_win/
+*_unix/
+
+llamafile
+llamafile.exe
+
+*.gguf
