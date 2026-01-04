@@ -17,7 +17,7 @@ ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llam
 
 clear
 echo "==========================================================="
-echo " local LLM Package Builder: $MODEL_ID"
+echo " LlamaPorter: $MODEL_ID"
 echo "==========================================================="
 echo "Please select the target Operating System for deployment:"
 echo " 1) Microsoft Windows (.bat format)"
