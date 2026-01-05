@@ -27,11 +27,11 @@ To start the AI, simply run the ignite script inside the generated folder:
 
     To package a different model, simply create a new manifest file:
     - Create a file at `manifest/{your-model-name}`.
-    - List the GGUF download URLs inside (one per line).
+    - List the GGUF download URLs inside (one per line; See `manifest/`).
 
 2. Pre-set Model: 
-    
-    To bypass the selection menu, create a `.model` file containing the specific manifest name as:
+
+    To bypass the model selection menu, create a `.model` file containing the specific manifest name as:
     ```bash
     echo Phi-3-mini-4k-instruct-q4 >> .model
     ```
