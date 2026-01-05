@@ -1,41 +1,57 @@
 # Windows Builder: powershell -ExecutionPolicy Bypass -File bootloader.ps1
 
 $ProgressPreference = 'SilentlyContinue'
-if (-not (Test-Path ".model")) {
-    Write-Host "[ ERROR ] .model file is missing."
-    exit 1
-}
-
-$MODEL_ID = (Get-Content ".model").Trim()
-$MANIFEST_PATH = "manifest/$MODEL_ID"
-
-if (-not (Test-Path $MANIFEST_PATH)) {
-    Write-Host "[ ERROR ] Manifest file not found at $MANIFEST_PATH"
-    exit 1
-}
-
 $ENGINE_URL = "https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
+if (-not (Test-Path "manifest")) {
+    Write-Host "[ ERROR ] manifest/ folder not found."; 
+    exit 1 
+}
 
 Clear-Host
 Write-Host "------------------------------------------------------------"
-Write-Host " LlamaPorter: $MODEL_ID"
+Write-Host " LlamaPorter"
 Write-Host "------------------------------------------------------------"
 Write-Host "Please select the target Operating System for deployment:"
 Write-Host " 1) Microsoft Windows (.bat format)"
 Write-Host " 2) Linux or macOS (.sh format)"
 $OS_CHOICE = Read-Host " Selection (1-2)"
-Write-Host "------------------------------------------------------------"
 
 if ($OS_CHOICE -eq "1") {
     $OS_SUFFIX = "win"
     $TARGET_ENGINE = "llamafile.exe"
-    Write-Host "[ INFO ] Target environment set to Windows."
 } elseif ($OS_CHOICE -eq "2") {
     $OS_SUFFIX = "unix"
     $TARGET_ENGINE = "llamafile"
-    Write-Host "[ INFO ] Target environment set to Linux/macOS."
 } else {
-    Write-Host "[ ERROR ] Invalid selection. Please restart the builder and select 1 or 2."
+    Write-Host "[ ERROR ] Invalid Operating System selection. Please restart the builder."
+    exit 1
+}
+Write-Host "[ INFO ] Target Operating System set to $OS_SUFFIX"
+Write-Host "------------------------------------------------------------"
+
+if (-not (Test-Path ".model")) {
+    Write-Host "Please select the llm model for deployment:"
+    $models = Get-ChildItem "manifest" | Select-Object -ExpandProperty Name
+    for ($i=0; $i -lt $models.Count; $i++) {
+        Write-Host " $($i+1)) $($models[$i])"
+    }
+    $choice = Read-Host " Select a model (1-$($models.Count))"
+    if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $models.Count) {
+        $MODEL_ID = $models[[int]$choice-1]
+        $MANIFEST_PATH = "manifest/$MODEL_ID"
+    } else {
+        Write-Host "[ ERROR ] Invalid Model selection. Please restart the builder."
+        exit 1
+    }
+} else {
+    $MODEL_ID = (Get-Content ".model").Trim()
+    $MANIFEST_PATH = "manifest/$MODEL_ID"
+}
+Write-Host "[ INFO ] Target LLM model set to $MODEL_ID"
+Write-Host "------------------------------------------------------------"
+
+if (-not (Test-Path $MANIFEST_PATH)) {
+    Write-Host "[ ERROR ] Manifest file not found at $MANIFEST_PATH"
     exit 1
 }
 

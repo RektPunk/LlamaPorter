@@ -1,42 +1,64 @@
 #!/bin/bash
 
-if [ ! -f ".model" ]; then
-    echo "[ ERROR ] .model file is missing."
+ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
+if [ ! -d "manifest" ]; then
+    echo "[ ERROR ] manifest/ folder not found."
+    exit 1
+fi
+MODELS=(manifest/*)
+if [ ${#MODELS[@]} -eq 0 ] || [ ! -e "${MODELS[0]}" ]; then
+    echo "[ ERROR ] No manifest files found in manifest/ folder."
     exit 1
 fi
 
-MODEL_ID=$(cat .model | xargs)
-MANIFEST_PATH="manifest/${MODEL_ID}"
+clear
+echo "------------------------------------------------------------"
+echo "LlamaPorter"
+echo "------------------------------------------------------------"
+echo "Please select the target Operating System for deployment:"
+echo " 1) Microsoft Windows (.bat format)"
+echo " 2) Linux or macOS (.sh format)"
+read -p " Selection (1-2): " OS_CHOICE
+
+if [ "$OS_CHOICE" == "1" ]; then
+    OS_SUFFIX="win"
+    TARGET_ENGINE="llamafile.exe"
+elif [ "$OS_CHOICE" == "2" ]; then
+    OS_SUFFIX="unix"
+    TARGET_ENGINE="llamafile"
+else
+    echo "[ ERROR ] Invalid Operating System selection. Please restart the builder."
+    exit 1
+fi
+echo "[ INFO ] Target Operating System set to $OS_SUFFIX"
+echo "------------------------------------------------------------"
+
+if [ ! -f ".model" ]; then
+    echo "Please select the llm model for deployment:"
+    for i in "${!MODELS[@]}"; do
+        FILE_NAME=$(basename "${MODELS[$i]}")
+        echo " $((i+1))) $FILE_NAME"
+    done
+    read -p " Select a model (1-${#MODELS[@]}): " MODEL_CHOICE
+
+    if [[ ! "$MODEL_CHOICE" =~ ^[0-9]+$ ]] || [ "$MODEL_CHOICE" -lt 1 ] || [ "$MODEL_CHOICE" -gt "${#MODELS[@]}" ]; then
+        echo "[ ERROR ] Invalid Model selection. Please restart the builder."
+        exit 1
+    fi
+    MANIFEST_PATH="${MODELS[$((MODEL_CHOICE-1))]}"
+    MODEL_ID=$(basename "$MANIFEST_PATH")
+else
+    MODEL_ID=$(cat .model | xargs)
+    MANIFEST_PATH="manifest/${MODEL_ID}"
+fi
+echo "[ INFO ] Target LLM model set to $MODEL_ID"
+echo "------------------------------------------------------------"
 
 if [ ! -f "$MANIFEST_PATH" ]; then
     echo "[ ERROR ] Manifest file not found at $MANIFEST_PATH"
     exit 1
 fi
 
-ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
-
-clear
-echo "------------------------------------------------------------"
-echo "LlamaPorter: $MODEL_ID"
-echo "------------------------------------------------------------"
-echo "Please select the target Operating System for deployment:"
-echo " 1) Microsoft Windows (.bat format)"
-echo " 2) Linux or macOS (.sh format)"
-read -p " Selection (1-2): " OS_CHOICE
-echo "------------------------------------------------------------"
-
-if [ "$OS_CHOICE" == "1" ]; then
-    OS_SUFFIX="win"
-    TARGET_ENGINE="llamafile.exe"
-    echo "[ INFO ] Target environment set to Windows."
-elif [ "$OS_CHOICE" == "2" ]; then
-    OS_SUFFIX="unix"
-    TARGET_ENGINE="llamafile"
-    echo "[ INFO ] Target environment set to Linux/macOS."
-else
-    echo "[ ERROR ] Invalid selection. Please restart the builder and select 1 or 2."
-    exit 1
-fi
 
 REL="${MODEL_ID}_${OS_SUFFIX}"
 mkdir -p "$REL"
