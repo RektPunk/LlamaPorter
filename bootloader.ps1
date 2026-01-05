@@ -1,6 +1,7 @@
 # Windows Builder: powershell -ExecutionPolicy Bypass -File bootloader.ps1
 
 $ProgressPreference = 'SilentlyContinue'
+
 $ENGINE_URL = "https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
 $MANIFEST_BASE = "manifest"
 if (-not (Test-Path "$MANIFEST_BASE")) {
@@ -10,6 +11,9 @@ if (-not (Test-Path "$MANIFEST_BASE")) {
 
 $ASSETS_BASE = "assets"
 if (-not (Test-Path "$ASSETS_BASE/")) { New-Item -ItemType Directory -Path "$ASSETS_BASE/" | Out-Null }
+
+$DISTS_BASE = "dists"
+if (-not (Test-Path "$DISTS_BASE/")) { New-Item -ItemType Directory -Path "$DISTS_BASE/" | Out-Null }
 
 Clear-Host
 Write-Host "------------------------------------------------------------"
@@ -39,7 +43,7 @@ if (-not (Test-Path ".model")) {
     for ($i=0; $i -lt $models.Count; $i++) {
         Write-Host " $($i+1)) $($models[$i])"
     }
-    $choice = Read-Host " Select a model (1-$($models.Count))"
+    $choice = Read-Host "Select a model (1-$($models.Count))"
     if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $models.Count) {
         $MODEL_ID = $models[[int]$choice-1]
         $MANIFEST_PATH = Join-Path $MANIFEST_BASE $MODEL_ID
@@ -59,19 +63,24 @@ if (-not (Test-Path $MANIFEST_PATH)) {
     exit 1
 }
 
-$REL = "${MODEL_ID}_${OS_SUFFIX}"
+$REL = Join-Path $DISTS_BASE "${MODEL_ID}_${OS_SUFFIX}"
 if (-not (Test-Path $REL)) { New-Item -ItemType Directory -Path $REL | Out-Null }
 
-if (Test-Path "$ASSETS_BASE/llamafile") {
+if (Test-Path (Join-Path $ASSETS_BASE "llamafile")) {
     Write-Host "[ INFO ] Found local 'llamafile' binary."
 } else {
-    if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
+    if (-not (Test-Path (Join-Path $REL $TARGET_ENGINE))) {
         Write-Host "[ INFO ] No local engine found. Initiating download..."
         Start-Job -Name "EngineDownload" -ScriptBlock {
-            param($url, $root, $a_base) 
+            param($url, $p, $root) 
             Set-Location $root
-            Invoke-WebRequest -Uri $url -OutFile "$a_base/llamafile"
-        } -ArgumentList $ENGINE_URL, $PSScriptRoot, $ASSETS_BASE | Out-Null
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $p
+            } catch {
+                if (Test-Path $p) { Remove-Item $p }
+                throw "[ Error ] Download failed for $url"
+            }
+        } -ArgumentList $ENGINE_URL, Join-Path $ASSETS_BASE "llamafile",  $PSScriptRoot | Out-Null
     } else {
         Write-Host "[ INFO ] Engine binary already exists in the target folder."
     }
@@ -95,7 +104,12 @@ foreach ($url in $urls) {
             param($u, $p, $root) 
             Set-Location $root
             $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest -Uri $u -OutFile $p
+            try {
+                Invoke-WebRequest -Uri $u -OutFile $p
+            } catch {
+                if (Test-Path $p) { Remove-Item $p }
+                throw "[ Error ] Download failed for $u"
+            }
         } -ArgumentList $url, $targetFilePath, $PSScriptRoot | Out-Null
     } else {
         Write-Host "[ INFO ] File already exists: $fileName (Skipping)"
@@ -123,7 +137,26 @@ while ($true) {
     if ($aliveCount -eq 0) { break }
     Start-Sleep -Milliseconds 500
 }
-Get-Job | Remove-Job
+$jobs = Get-Job
+$failedJobs = $jobs | Where-Object { $_.State -eq "Failed" }
+
+if ($failedJobs) {
+    Write-Host ""
+    Write-Host "------------------------------------------------------------"
+    Write-Host "[ ERROR ] Some downloads failed."
+    Write-Host "[ REASON ] It might be a network issue or a restricted model."
+    Write-Host "------------------------------------------------------------"
+
+    foreach ($job in $failedJobs) {
+        Write-Host "[ ERROR ] Failed Task: $($job.Name)"
+        $job | Receive-Job -ErrorAction SilentlyContinue | Out-String
+    }
+    Write-Host "[ INFO ] Stopping build process."
+    $jobs | Remove-Job
+    exit 1
+}
+
+$jobs | Remove-Job
 Write-Host ""
 Write-Host "[ SUCCESS ] All resources are ready."
 

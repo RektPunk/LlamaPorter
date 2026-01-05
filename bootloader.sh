@@ -1,9 +1,6 @@
 #!/bin/bash
 
 ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
-ASSETS_BASE="assets"
-mkdir -p "$ASSETS_BASE"
-
 MANIFEST_BASE="manifest"
 if [ ! -d "$MANIFEST_BASE" ]; then
     echo "[ ERROR ] $MANIFEST_BASE/ folder not found."
@@ -14,6 +11,12 @@ if [ ${#MODELS[@]} -eq 0 ] || [ ! -e "${MODELS[0]}" ]; then
     echo "[ ERROR ] No manifest files found in $MANIFEST_BASE/ folder."
     exit 1
 fi
+
+ASSETS_BASE="assets"
+mkdir -p "$ASSETS_BASE"
+
+DISTS_BASE="dists"
+mkdir -p "$DISTS_BASE"
 
 clear
 echo "------------------------------------------------------------"
@@ -63,7 +66,7 @@ if [ ! -f "$MANIFEST_PATH" ]; then
     exit 1
 fi
 
-REL="${MODEL_ID}_${OS_SUFFIX}"
+REL="${DISTS_BASE}/${MODEL_ID}_${OS_SUFFIX}"
 mkdir -p "$REL"
 MODEL_CACHE_DIR="$ASSETS_BASE/$MODEL_ID"
 mkdir -p "$MODEL_CACHE_DIR"
@@ -74,7 +77,7 @@ if [ -f "$ASSETS_BASE/llamafile" ]; then
 else
     if [ ! -f "$REL/$TARGET_ENGINE" ]; then
         echo "[ INFO ] No local engine found. Initiating download."
-        curl -sL -o "$ASSETS_BASE/llamafile" "$ENGINE_URL" &
+        curl -sL --fail -o "$ASSETS_BASE/llamafile" "$ENGINE_URL" &
         PID_ENG=$!
     else
         echo "[ INFO ] Engine binary already exists in the target folder."
@@ -95,7 +98,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
     if [ ! -f "$MODEL_CACHE_DIR/$FILE_NAME" ]; then
         echo "[ INFO ] Queuing Download: $FILE_NAME"
-        curl -sL -o "$MODEL_CACHE_DIR/$FILE_NAME" "$URL" &
+        curl -sL --fail -o "$MODEL_CACHE_DIR/$FILE_NAME" "$URL" &
         PIDS+=($!)
     else
         echo "[ INFO ] File already exists: $FILE_NAME (Skipping)"

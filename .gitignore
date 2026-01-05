@@ -1,7 +1,9 @@
 # --- LlamaPorter Ignore Rules ---
+assets/
+dists/
+
 *_win/
 *_unix/
-assets/
 
 llamafile
 llamafile.exe
