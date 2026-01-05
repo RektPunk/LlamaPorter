@@ -8,7 +8,11 @@ if (-not (Test-Path "$MANIFEST_BASE")) {
     Write-Host "[ ERROR ] $MANIFEST_BASE/ folder not found."; 
     exit 1 
 }
-
+$models = Get-ChildItem "$MANIFEST_BASE" | Select-Object -ExpandProperty Name
+if ($null -eq $models -or $models.Count -eq 0) {
+    Write-Host "[ ERROR ] No manifest files found in $MANIFEST_BASE/ folder."
+    exit 1
+}
 $ASSETS_BASE = "assets"
 if (-not (Test-Path "$ASSETS_BASE/")) { New-Item -ItemType Directory -Path "$ASSETS_BASE/" | Out-Null }
 
@@ -39,18 +43,16 @@ Write-Host "------------------------------------------------------------"
 
 if (-not (Test-Path ".model")) {
     Write-Host "Please select the llm model for deployment:"
-    $models = Get-ChildItem "$MANIFEST_BASE" | Select-Object -ExpandProperty Name
     for ($i=0; $i -lt $models.Count; $i++) {
         Write-Host " $($i+1)) $($models[$i])"
     }
     $choice = Read-Host "Select a model (1-$($models.Count))"
-    if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $models.Count) {
-        $MODEL_ID = $models[[int]$choice-1]
-        $MANIFEST_PATH = Join-Path $MANIFEST_BASE $MODEL_ID
-    } else {
+    if (-not ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $models.Count)) {
         Write-Host "[ ERROR ] Invalid Model selection. Please restart the builder."
         exit 1
     }
+    $MODEL_ID = $models[[int]$choice-1]
+    $MANIFEST_PATH = Join-Path $MANIFEST_BASE $MODEL_ID
 } else {
     $MODEL_ID = (Get-Content ".model").Trim()
     $MANIFEST_PATH = Join-Path $MANIFEST_BASE $MODEL_ID

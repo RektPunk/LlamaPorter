@@ -1,5 +1,5 @@
 # LlamaPorter
-LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM specifically for **GGUF** format models. Powered by [mozilla-ai/llamafile](https://github.com/mozilla-ai/llamafile), it bundles everything into a single portable folder so you can run AI anywhere—even in completely offline or air-gapped environments.
+LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM packages specifically for **GGUF** format models. Powered by [mozilla-ai/llamafile](https://github.com/mozilla-ai/llamafile), it bundles everything into a single portable folder so you can run AI anywhere—even in completely offline or air-gapped environments.
 
 ## Quick Start
 ### Build
@@ -31,7 +31,7 @@ To start the AI, simply run the ignite script inside the generated folder:
 
 2. Pre-set Model: 
 
-    To bypass the model selection menu, create a `.model` file containing the specific manifest name as:
+    To bypass the model selection menu, create a `.model` file containing the specific manifest name, for example:
     ```bash
     echo Phi-3-mini-4k-instruct-q4 >> .model
     ```
