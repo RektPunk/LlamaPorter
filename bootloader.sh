@@ -1,6 +1,8 @@
 #!/bin/bash
 
 ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
+mkdir -p "assets"
+
 if [ ! -d "manifest" ]; then
     echo "[ ERROR ] manifest/ folder not found."
     exit 1
@@ -59,17 +61,18 @@ if [ ! -f "$MANIFEST_PATH" ]; then
     exit 1
 fi
 
-
 REL="${MODEL_ID}_${OS_SUFFIX}"
 mkdir -p "$REL"
+MODEL_CACHE_DIR="assets/$MODEL_ID"
+mkdir -p "$MODEL_CACHE_DIR"
 
 PID_ENG=""
-if [ -f "llamafile" ]; then
+if [ -f "assets/llamafile" ]; then
     echo "[ INFO ] Found local 'llamafile' binary."
 else
     if [ ! -f "$REL/$TARGET_ENGINE" ]; then
         echo "[ INFO ] No local engine found. Initiating download."
-        curl -sL -o "llamafile" "$ENGINE_URL" &
+        curl -sL -o "assets/llamafile" "$ENGINE_URL" &
         PID_ENG=$!
     else
         echo "[ INFO ] Engine binary already exists in the target folder."
@@ -85,23 +88,18 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     URL=$(echo "$line" | xargs)
     [[ -z "$URL" || "$URL" == \#* ]] && continue
 
-    URL_ARRAY+=("$URL")
     FILE_NAME=$(basename "$URL")
+    [ -z "$FIRST_MODEL_FILE" ] && FIRST_MODEL_FILE=$FILE_NAME
 
-    if [ ! -f "$REL/$FILE_NAME" ]; then
+    if [ ! -f "$MODEL_CACHE_DIR/$FILE_NAME" ]; then
         echo "[ INFO ] Queuing Download: $FILE_NAME"
-        curl -sL -o "$REL/$FILE_NAME" "$URL" &
+        curl -sL -o "$MODEL_CACHE_DIR/$FILE_NAME" "$URL" &
         PIDS+=($!)
     else
         echo "[ INFO ] File already exists: $FILE_NAME (Skipping)"
     fi
-    
-    if [ -z "$FIRST_MODEL_FILE" ]; then
-        FIRST_MODEL_FILE=$FILE_NAME
-    fi
 done < "$MANIFEST_PATH"
 
-echo "[ INFO ] Total files detected in manifest: ${#URL_ARRAY[@]}"
 echo "[ INFO ] Monitoring background download tasks."
 while :; do
     ALIVE_COUNT=0
@@ -110,28 +108,24 @@ while :; do
         if kill -0 "$pid" 2>/dev/null; then ((ALIVE_COUNT++)); fi
     done
 
-    if [ -f "llamafile" ]; then
-        ENG_SIZE=$(du -h "llamafile" | awk '{print $1}')
-    elif [ -f "$REL/$TARGET_ENGINE" ]; then
-        ENG_SIZE=$(du -h "$REL/$TARGET_ENGINE" | awk '{print $1}')
-    fi
+    ENG_SIZE=$(du -h "assets/llamafile" 2>/dev/null | awk '{print $1}')
+    MDL_SIZE=$(du -hc "$MODEL_CACHE_DIR"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
 
-    MDL_SIZE=$(du -hc "$REL"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
     echo -ne "\r\033[K[ PROGRESS ] Engine: ${ENG_SIZE:-0B} | Models: ${MDL_SIZE:-0B} | Active Tasks: $ALIVE_COUNT"
 
     [ $ALIVE_COUNT -eq 0 ] && break
     sleep 0.5
 done
 wait
-echo
-echo "[ SUCCESS ] All resources are ready."
+echo -e "\n[ SUCCESS ] All resources are ready."
 
 if [ ! -f "$REL/$TARGET_ENGINE" ]; then
-    if [ -f "llamafile" ]; then
-        echo "[ INFO ] Copying engine binary to $REL."
-        cp "llamafile" "$REL/$TARGET_ENGINE"
-    fi
+    echo "[ INFO ] Copying engine binary to $REL..."
+    cp "assets/llamafile" "$REL/$TARGET_ENGINE"
 fi
+echo "[ INFO ] Copying LLM model to $REL..."
+cp "$MODEL_CACHE_DIR"/* "$REL/" 2>/dev/null
+
 
 echo "[ INFO ] Creating runtime executable script (ignite)."
 if [ "$OS_CHOICE" == "1" ]; then
@@ -142,6 +136,7 @@ chcp 65001 > nul
 cd /d "%~dp0"
 echo Starting Local LLM...
 $TARGET_ENGINE -m $FIRST_MODEL_FILE
+pause
 EOF
     echo "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 else
@@ -156,4 +151,6 @@ EOF
     echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 fi
 
+echo "------------------------------------------------------------"
 echo "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"
+echo "------------------------------------------------------------"

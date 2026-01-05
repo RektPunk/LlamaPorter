@@ -6,10 +6,11 @@ if (-not (Test-Path "manifest")) {
     Write-Host "[ ERROR ] manifest/ folder not found."; 
     exit 1 
 }
+if (-not (Test-Path "assets/")) { New-Item -ItemType Directory -Path "assets/" | Out-Null }
 
 Clear-Host
 Write-Host "------------------------------------------------------------"
-Write-Host " LlamaPorter"
+Write-Host "LlamaPorter"
 Write-Host "------------------------------------------------------------"
 Write-Host "Please select the target Operating System for deployment:"
 Write-Host " 1) Microsoft Windows (.bat format)"
@@ -58,7 +59,7 @@ if (-not (Test-Path $MANIFEST_PATH)) {
 $REL = "${MODEL_ID}_${OS_SUFFIX}"
 if (-not (Test-Path $REL)) { New-Item -ItemType Directory -Path $REL | Out-Null }
 
-if (Test-Path "llamafile") {
+if (Test-Path "assets/llamafile") {
     Write-Host "[ INFO ] Found local 'llamafile' binary."
 } else {
     if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
@@ -66,7 +67,7 @@ if (Test-Path "llamafile") {
         Start-Job -Name "EngineDownload" -ScriptBlock {
             param($url, $root) 
             Set-Location $root
-            Invoke-WebRequest -Uri $url -OutFile "llamafile"
+            Invoke-WebRequest -Uri $url -OutFile "assets/llamafile"
         } -ArgumentList $ENGINE_URL, $PSScriptRoot | Out-Null
     } else {
         Write-Host "[ INFO ] Engine binary already exists in the target folder."
@@ -75,25 +76,26 @@ if (Test-Path "llamafile") {
 
 
 $urls = Get-Content $MANIFEST_PATH | Where-Object { $_ -and -not $_.StartsWith("#") }
-$firstModelFile = ""
+$MODEL_CACHE_DIR = "assets/$MODEL_ID"
+if (-not (Test-Path $MODEL_CACHE_DIR)) { New-Item -ItemType Directory -Path $MODEL_CACHE_DIR | Out-Null }
 
+$firstModelFile = ""
 foreach ($url in $urls) {
     $url = $url.Trim()
     $fileName = Split-Path $url -Leaf
     if ([string]::IsNullOrEmpty($firstModelFile)) { $firstModelFile = $fileName }
-    if (-not (Test-Path "$REL/$fileName")) {
+    if (-not (Test-Path "$MODEL_CACHE_DIR/$fileName")) {
         Write-Host "[ INFO ] Queuing Download: $fileName"
         Start-Job -Name "Download-$fileName" -ScriptBlock {
             param($u, $p, $root) 
             Set-Location $root
             $ProgressPreference = 'SilentlyContinue'
             Invoke-WebRequest -Uri $u -OutFile $p
-        } -ArgumentList $url, "$REL/$fileName", $PSScriptRoot | Out-Null
+        } -ArgumentList $url, "$MODEL_CACHE_DIR/$fileName", $PSScriptRoot | Out-Null
     } else {
         Write-Host "[ INFO ] File already exists: $fileName (Skipping)"
     }
 }
-
 
 Write-Host "[ INFO ] Monitoring background download tasks..."
 while ($true) {
@@ -101,10 +103,10 @@ while ($true) {
     $aliveCount = ($jobs).Count
 
     $engSize = "0B"
-    $engFile = Get-Item "llamafile" -ErrorAction SilentlyContinue
+    $engFile = Get-Item "assets/llamafile" -ErrorAction SilentlyContinue
     if ($engFile) { $engSize = "$(([math]::Round($engFile.Length / 1MB, 1)))M" }
 
-    $totalMdlBytes = (Get-ChildItem "$REL/*.gguf" -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+    $totalMdlBytes = (Get-ChildItem "$MODEL_CACHE_DIR/*.gguf" -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
     $mdlSize = "0B"
     if ($totalMdlBytes -gt 0) { 
         $mdlSize = "$(([math]::Round($totalMdlBytes / 1GB, 2)))G" 
@@ -121,15 +123,17 @@ Write-Host ""
 Write-Host "[ SUCCESS ] All resources are ready."
 
 if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
-    if (Test-Path "llamafile") {
+    if (Test-Path "assets/llamafile") {
         Write-Host "`n[ INFO ] Copying engine binary to $REL..."
-        Copy-Item "llamafile" "$REL/$TARGET_ENGINE"
+        Copy-Item "assets/llamafile" "$REL/$TARGET_ENGINE"
     }
 }
+Write-Host "[ INFO ] Copying LLM model to $REL..."
+Copy-Item "$MODEL_CACHE_DIR/*" -Destination "$REL/" -ErrorAction SilentlyContinue
 
 Write-Host "[ INFO ] Creating runtime executable script (ignite)."
 if ($OS_CHOICE -eq "1") {
-    $batContent = "@echo off`ntitle LlamaPorter - $MODEL_ID`nchcp 65001 > nul`ncd /d ""%~dp0""`necho Starting Local LLM...`n$TARGET_ENGINE -m $firstModelFile"
+    $batContent = "@echo off`ntitle LlamaPorter - $MODEL_ID`nchcp 65001 > nul`ncd /d ""%~dp0""`necho Starting Local LLM...`n$TARGET_ENGINE -m $firstModelFile`npause"
     [System.IO.File]::WriteAllText("$PSScriptRoot/$REL/ignite.bat", $batContent, [System.Text.Encoding]::ASCII)
     Write-Host "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 } else {
