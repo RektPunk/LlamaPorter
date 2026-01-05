@@ -122,10 +122,10 @@ while ($true) {
     $aliveCount = ($jobs).Count
 
     $engSize = "0B"
-    $engFile = Get-Item "$ASSETS_BASE/llamafile" -ErrorAction SilentlyContinue
+    $engFile = Get-Item (Join-Path $ASSETS_BASE "llamafile") -ErrorAction SilentlyContinue
     if ($engFile) { $engSize = "$(([math]::Round($engFile.Length / 1MB, 1)))M" }
 
-    $totalMdlBytes = (Get-ChildItem "$MODEL_CACHE_DIR/*.gguf" -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+    $totalMdlBytes = (Get-ChildItem (Join-Path $MODEL_CACHE_DIR "*.gguf") -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
     $mdlSize = "0B"
     if ($totalMdlBytes -gt 0) { 
         $mdlSize = "$(([math]::Round($totalMdlBytes / 1GB, 2)))G" 
@@ -160,14 +160,14 @@ $jobs | Remove-Job
 Write-Host ""
 Write-Host "[ SUCCESS ] All resources are ready."
 
-if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
-    if (Test-Path "$ASSETS_BASE/llamafile") {
+if (-not (Test-Path (Join-Path $REL $TARGET_ENGINE))) {
+    if (Test-Path (Join-Path $ASSETS_BASE "llamafile")) {
         Write-Host "`n[ INFO ] Copying engine binary to $REL..."
-        Copy-Item "$ASSETS_BASE/llamafile" "$REL/$TARGET_ENGINE"
+        Copy-Item (Join-Path $ASSETS_BASE "llamafile") (Join-Path $REL $TARGET_ENGINE)
     }
 }
 Write-Host "[ INFO ] Copying LLM model to $REL..."
-Copy-Item "$MODEL_CACHE_DIR/*" -Destination "$REL/" -Force -ErrorAction SilentlyContinue
+Copy-Item (Join-Path $MODEL_CACHE_DIR "*") -Destination "$REL/" -Force -ErrorAction SilentlyContinue
 
 Write-Host "[ INFO ] Creating runtime executable script (ignite)."
 if ($OS_CHOICE -eq "1") {
@@ -181,4 +181,4 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding $false
     Write-Host "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 }
 
-Write-Host "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"
+Write-Host "[ SUCCESS ] BUILD COMPLETE AT ${REL}"

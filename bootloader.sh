@@ -156,4 +156,4 @@ EOF
     echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 fi
 
-echo "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"
+echo "[ SUCCESS ] BUILD COMPLETE AT ${REL}"
