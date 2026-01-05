@@ -14,7 +14,7 @@ Run the builder appropriate for your Operating System:
     ```powershell
     powershell -ExecutionPolicy Bypass -File bootloader.ps1
     ```
-Once the build is complete, a distribution folder named `{modelID}_{os}/` will be created.
+Once the build is complete, a distribution folder named `dists/{modelID}_{os}/` will be created.
 
 ### Run
 To start the AI, simply run the ignite script inside the generated folder:
