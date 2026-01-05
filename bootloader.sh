@@ -121,7 +121,29 @@ while :; do
     [ $ALIVE_COUNT -eq 0 ] && break
     sleep 0.5
 done
-wait
+
+EXIT_CODE=0
+for pid in $PID_ENG "${PIDS[@]}"; do
+    [ -z "$pid" ] && continue
+    wait "$pid" || EXIT_CODE=$?
+done
+
+echo -e "\n[ INFO ] Validating downloaded resources..."
+if [ ! -f "$ASSETS_BASE/llamafile" ]; then
+    echo "[ ERROR ] Engine binary (llamafile) is missing. Download might have failed."
+    exit 1
+fi
+
+if [ -z "$FIRST_MODEL_FILE" ] || [ ! -f "$MODEL_CACHE_DIR/$FIRST_MODEL_FILE" ]; then
+    echo "[ ERROR ] Some downloads failed."
+    exit 1
+fi
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "[ ERROR ] One or more download tasks failed (Exit Code: $EXIT_CODE)."
+    exit 1
+fi
+
 echo -e "\n[ SUCCESS ] All resources are ready."
 
 if [ ! -f "$REL/$TARGET_ENGINE" ]; then
