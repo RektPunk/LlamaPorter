@@ -2,11 +2,14 @@
 
 $ProgressPreference = 'SilentlyContinue'
 $ENGINE_URL = "https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
-if (-not (Test-Path "manifest")) {
-    Write-Host "[ ERROR ] manifest/ folder not found."; 
+$MANIFEST_BASE = "manifest"
+if (-not (Test-Path "$MANIFEST_BASE")) {
+    Write-Host "[ ERROR ] $MANIFEST_BASE/ folder not found."; 
     exit 1 
 }
-if (-not (Test-Path "assets/")) { New-Item -ItemType Directory -Path "assets/" | Out-Null }
+
+$ASSETS_BASE = "assets"
+if (-not (Test-Path "$ASSETS_BASE/")) { New-Item -ItemType Directory -Path "$ASSETS_BASE/" | Out-Null }
 
 Clear-Host
 Write-Host "------------------------------------------------------------"
@@ -32,21 +35,21 @@ Write-Host "------------------------------------------------------------"
 
 if (-not (Test-Path ".model")) {
     Write-Host "Please select the llm model for deployment:"
-    $models = Get-ChildItem "manifest" | Select-Object -ExpandProperty Name
+    $models = Get-ChildItem "$MANIFEST_BASE" | Select-Object -ExpandProperty Name
     for ($i=0; $i -lt $models.Count; $i++) {
         Write-Host " $($i+1)) $($models[$i])"
     }
     $choice = Read-Host " Select a model (1-$($models.Count))"
     if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $models.Count) {
         $MODEL_ID = $models[[int]$choice-1]
-        $MANIFEST_PATH = "manifest/$MODEL_ID"
+        $MANIFEST_PATH = Join-Path $MANIFEST_BASE $MODEL_ID
     } else {
         Write-Host "[ ERROR ] Invalid Model selection. Please restart the builder."
         exit 1
     }
 } else {
     $MODEL_ID = (Get-Content ".model").Trim()
-    $MANIFEST_PATH = "manifest/$MODEL_ID"
+    $MANIFEST_PATH = Join-Path $MANIFEST_BASE $MODEL_ID
 }
 Write-Host "[ INFO ] Target LLM model set to $MODEL_ID"
 Write-Host "------------------------------------------------------------"
@@ -59,16 +62,16 @@ if (-not (Test-Path $MANIFEST_PATH)) {
 $REL = "${MODEL_ID}_${OS_SUFFIX}"
 if (-not (Test-Path $REL)) { New-Item -ItemType Directory -Path $REL | Out-Null }
 
-if (Test-Path "assets/llamafile") {
+if (Test-Path "$ASSETS_BASE/llamafile") {
     Write-Host "[ INFO ] Found local 'llamafile' binary."
 } else {
     if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
         Write-Host "[ INFO ] No local engine found. Initiating download..."
         Start-Job -Name "EngineDownload" -ScriptBlock {
-            param($url, $root) 
+            param($url, $root, $a_base) 
             Set-Location $root
-            Invoke-WebRequest -Uri $url -OutFile "assets/llamafile"
-        } -ArgumentList $ENGINE_URL, $PSScriptRoot | Out-Null
+            Invoke-WebRequest -Uri $url -OutFile "$a_base/llamafile"
+        } -ArgumentList $ENGINE_URL, $PSScriptRoot, $ASSETS_BASE | Out-Null
     } else {
         Write-Host "[ INFO ] Engine binary already exists in the target folder."
     }
@@ -76,22 +79,24 @@ if (Test-Path "assets/llamafile") {
 
 
 $urls = Get-Content $MANIFEST_PATH | Where-Object { $_ -and -not $_.StartsWith("#") }
-$MODEL_CACHE_DIR = "assets/$MODEL_ID"
+$MODEL_CACHE_DIR = Join-Path $ASSETS_BASE $MODEL_ID
 if (-not (Test-Path $MODEL_CACHE_DIR)) { New-Item -ItemType Directory -Path $MODEL_CACHE_DIR | Out-Null }
 
 $firstModelFile = ""
 foreach ($url in $urls) {
     $url = $url.Trim()
     $fileName = Split-Path $url -Leaf
+    $targetFilePath = Join-Path $MODEL_CACHE_DIR $fileName
+
     if ([string]::IsNullOrEmpty($firstModelFile)) { $firstModelFile = $fileName }
-    if (-not (Test-Path "$MODEL_CACHE_DIR/$fileName")) {
+    if (-not (Test-Path $targetFilePath)) {
         Write-Host "[ INFO ] Queuing Download: $fileName"
         Start-Job -Name "Download-$fileName" -ScriptBlock {
             param($u, $p, $root) 
             Set-Location $root
             $ProgressPreference = 'SilentlyContinue'
             Invoke-WebRequest -Uri $u -OutFile $p
-        } -ArgumentList $url, "$MODEL_CACHE_DIR/$fileName", $PSScriptRoot | Out-Null
+        } -ArgumentList $url, $targetFilePath, $PSScriptRoot | Out-Null
     } else {
         Write-Host "[ INFO ] File already exists: $fileName (Skipping)"
     }
@@ -103,7 +108,7 @@ while ($true) {
     $aliveCount = ($jobs).Count
 
     $engSize = "0B"
-    $engFile = Get-Item "assets/llamafile" -ErrorAction SilentlyContinue
+    $engFile = Get-Item "$ASSETS_BASE/llamafile" -ErrorAction SilentlyContinue
     if ($engFile) { $engSize = "$(([math]::Round($engFile.Length / 1MB, 1)))M" }
 
     $totalMdlBytes = (Get-ChildItem "$MODEL_CACHE_DIR/*.gguf" -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
@@ -123,13 +128,13 @@ Write-Host ""
 Write-Host "[ SUCCESS ] All resources are ready."
 
 if (-not (Test-Path "$REL/$TARGET_ENGINE")) {
-    if (Test-Path "assets/llamafile") {
+    if (Test-Path "$ASSETS_BASE/llamafile") {
         Write-Host "`n[ INFO ] Copying engine binary to $REL..."
-        Copy-Item "assets/llamafile" "$REL/$TARGET_ENGINE"
+        Copy-Item "$ASSETS_BASE/llamafile" "$REL/$TARGET_ENGINE"
     }
 }
 Write-Host "[ INFO ] Copying LLM model to $REL..."
-Copy-Item "$MODEL_CACHE_DIR/*" -Destination "$REL/" -ErrorAction SilentlyContinue
+Copy-Item "$MODEL_CACHE_DIR/*" -Destination "$REL/" -Force -ErrorAction SilentlyContinue
 
 Write-Host "[ INFO ] Creating runtime executable script (ignite)."
 if ($OS_CHOICE -eq "1") {

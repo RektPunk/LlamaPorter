@@ -1,15 +1,17 @@
 #!/bin/bash
 
 ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
-mkdir -p "assets"
+ASSETS_BASE="assets"
+mkdir -p "$ASSETS_BASE"
 
-if [ ! -d "manifest" ]; then
-    echo "[ ERROR ] manifest/ folder not found."
+MANIFEST_BASE="manifest"
+if [ ! -d "$MANIFEST_BASE" ]; then
+    echo "[ ERROR ] $MANIFEST_BASE/ folder not found."
     exit 1
 fi
-MODELS=(manifest/*)
+MODELS=($MANIFEST_BASE/*)
 if [ ${#MODELS[@]} -eq 0 ] || [ ! -e "${MODELS[0]}" ]; then
-    echo "[ ERROR ] No manifest files found in manifest/ folder."
+    echo "[ ERROR ] No manifest files found in $MANIFEST_BASE/ folder."
     exit 1
 fi
 
@@ -51,7 +53,7 @@ if [ ! -f ".model" ]; then
     MODEL_ID=$(basename "$MANIFEST_PATH")
 else
     MODEL_ID=$(cat .model | xargs)
-    MANIFEST_PATH="manifest/${MODEL_ID}"
+    MANIFEST_PATH="${MANIFEST_BASE}/${MODEL_ID}"
 fi
 echo "[ INFO ] Target LLM model set to $MODEL_ID"
 echo "------------------------------------------------------------"
@@ -63,16 +65,16 @@ fi
 
 REL="${MODEL_ID}_${OS_SUFFIX}"
 mkdir -p "$REL"
-MODEL_CACHE_DIR="assets/$MODEL_ID"
+MODEL_CACHE_DIR="$ASSETS_BASE/$MODEL_ID"
 mkdir -p "$MODEL_CACHE_DIR"
 
 PID_ENG=""
-if [ -f "assets/llamafile" ]; then
+if [ -f "$ASSETS_BASE/llamafile" ]; then
     echo "[ INFO ] Found local 'llamafile' binary."
 else
     if [ ! -f "$REL/$TARGET_ENGINE" ]; then
         echo "[ INFO ] No local engine found. Initiating download."
-        curl -sL -o "assets/llamafile" "$ENGINE_URL" &
+        curl -sL -o "$ASSETS_BASE/llamafile" "$ENGINE_URL" &
         PID_ENG=$!
     else
         echo "[ INFO ] Engine binary already exists in the target folder."
@@ -108,7 +110,7 @@ while :; do
         if kill -0 "$pid" 2>/dev/null; then ((ALIVE_COUNT++)); fi
     done
 
-    ENG_SIZE=$(du -h "assets/llamafile" 2>/dev/null | awk '{print $1}')
+    ENG_SIZE=$(du -h "$ASSETS_BASE/llamafile" 2>/dev/null | awk '{print $1}')
     MDL_SIZE=$(du -hc "$MODEL_CACHE_DIR"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
 
     echo -ne "\r\033[K[ PROGRESS ] Engine: ${ENG_SIZE:-0B} | Models: ${MDL_SIZE:-0B} | Active Tasks: $ALIVE_COUNT"
@@ -121,10 +123,10 @@ echo -e "\n[ SUCCESS ] All resources are ready."
 
 if [ ! -f "$REL/$TARGET_ENGINE" ]; then
     echo "[ INFO ] Copying engine binary to $REL..."
-    cp "assets/llamafile" "$REL/$TARGET_ENGINE"
+    cp -f "$ASSETS_BASE/llamafile" "$REL/$TARGET_ENGINE"
 fi
 echo "[ INFO ] Copying LLM model to $REL..."
-cp "$MODEL_CACHE_DIR"/* "$REL/" 2>/dev/null
+cp -f "$MODEL_CACHE_DIR"/* "$REL/" 2>/dev/null
 
 
 echo "[ INFO ] Creating runtime executable script (ignite)."
@@ -151,6 +153,4 @@ EOF
     echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 fi
 
-echo "------------------------------------------------------------"
 echo "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"
-echo "------------------------------------------------------------"
