@@ -1,5 +1,5 @@
 # LlamaPorter
-LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM packages specifically for **GGUF** format models. It bundles everything you need into a single folder so you can run AI anywhere—including offline and air-gapped environments.
+LlamaPorter is a lightweight tool to build Ready-to-Use Local LLM specifically for **GGUF** format models. Powered by [mozilla-ai/llamafile](https://github.com/mozilla-ai/llamafile), it bundles everything into a single portable folder so you can run AI anywhere—even in completely offline or air-gapped environments.
 
 ## Quick Start
 ### Build
