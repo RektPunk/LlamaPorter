@@ -1,4 +1,7 @@
 # --- LlamaPorter Ignore Rules ---
+assets/
+dists/
+
 *_win/
 *_unix/
 

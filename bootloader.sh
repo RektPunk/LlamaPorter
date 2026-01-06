@@ -1,53 +1,83 @@
 #!/bin/bash
 
-if [ ! -f ".model" ]; then
-    echo "[ ERROR ] .model file is missing."
+ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
+MANIFEST_BASE="manifest"
+if [ ! -d "$MANIFEST_BASE" ]; then
+    echo "[ ERROR ] $MANIFEST_BASE/ folder not found."
+    exit 1
+fi
+MODELS=($MANIFEST_BASE/*)
+if [ ${#MODELS[@]} -eq 0 ] || [ ! -e "${MODELS[0]}" ]; then
+    echo "[ ERROR ] No manifest files found in $MANIFEST_BASE/ folder."
     exit 1
 fi
 
-MODEL_ID=$(cat .model | xargs)
-MANIFEST_PATH="manifest/${MODEL_ID}"
+ASSETS_BASE="assets"
+mkdir -p "$ASSETS_BASE"
+
+DISTS_BASE="dists"
+mkdir -p "$DISTS_BASE"
+
+clear
+echo "------------------------------------------------------------"
+echo "LlamaPorter"
+echo "------------------------------------------------------------"
+echo "Please select the target Operating System for deployment:"
+echo " 1) Microsoft Windows (.bat format)"
+echo " 2) Linux or macOS (.sh format)"
+read -p " Selection (1-2): " OS_CHOICE
+
+if [ "$OS_CHOICE" == "1" ]; then
+    OS_SUFFIX="win"
+    TARGET_ENGINE="llamafile.exe"
+elif [ "$OS_CHOICE" == "2" ]; then
+    OS_SUFFIX="unix"
+    TARGET_ENGINE="llamafile"
+else
+    echo "[ ERROR ] Invalid Operating System selection. Please restart the builder."
+    exit 1
+fi
+echo "[ INFO ] Target Operating System set to $OS_SUFFIX"
+echo "------------------------------------------------------------"
+
+if [ ! -f ".model" ]; then
+    echo "Please select the llm model for deployment:"
+    for i in "${!MODELS[@]}"; do
+        FILE_NAME=$(basename "${MODELS[$i]}")
+        echo " $((i+1))) $FILE_NAME"
+    done
+    read -p " Select a model (1-${#MODELS[@]}): " MODEL_CHOICE
+
+    if [[ ! "$MODEL_CHOICE" =~ ^[0-9]+$ ]] || [ "$MODEL_CHOICE" -lt 1 ] || [ "$MODEL_CHOICE" -gt "${#MODELS[@]}" ]; then
+        echo "[ ERROR ] Invalid Model selection. Please restart the builder."
+        exit 1
+    fi
+    MANIFEST_PATH="${MODELS[$((MODEL_CHOICE-1))]}"
+    MODEL_ID=$(basename "$MANIFEST_PATH")
+else
+    MODEL_ID=$(cat .model | xargs)
+    MANIFEST_PATH="${MANIFEST_BASE}/${MODEL_ID}"
+fi
+echo "[ INFO ] Target LLM model set to $MODEL_ID"
+echo "------------------------------------------------------------"
 
 if [ ! -f "$MANIFEST_PATH" ]; then
     echo "[ ERROR ] Manifest file not found at $MANIFEST_PATH"
     exit 1
 fi
 
-ENGINE_URL="https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3"
-
-clear
-echo "------------------------------------------------------------"
-echo "LlamaPorter: $MODEL_ID"
-echo "------------------------------------------------------------"
-echo "Please select the target Operating System for deployment:"
-echo " 1) Microsoft Windows (.bat format)"
-echo " 2) Linux or macOS (.sh format)"
-read -p " Selection (1-2): " OS_CHOICE
-echo "------------------------------------------------------------"
-
-if [ "$OS_CHOICE" == "1" ]; then
-    OS_SUFFIX="win"
-    TARGET_ENGINE="llamafile.exe"
-    echo "[ INFO ] Target environment set to Windows."
-elif [ "$OS_CHOICE" == "2" ]; then
-    OS_SUFFIX="unix"
-    TARGET_ENGINE="llamafile"
-    echo "[ INFO ] Target environment set to Linux/macOS."
-else
-    echo "[ ERROR ] Invalid selection. Please restart the builder and select 1 or 2."
-    exit 1
-fi
-
-REL="${MODEL_ID}_${OS_SUFFIX}"
+REL="${DISTS_BASE}/${MODEL_ID}_${OS_SUFFIX}"
 mkdir -p "$REL"
+MODEL_CACHE_DIR="$ASSETS_BASE/$MODEL_ID"
+mkdir -p "$MODEL_CACHE_DIR"
 
 PID_ENG=""
-if [ -f "llamafile" ]; then
+if [ -f "$ASSETS_BASE/llamafile" ]; then
     echo "[ INFO ] Found local 'llamafile' binary."
 else
     if [ ! -f "$REL/$TARGET_ENGINE" ]; then
         echo "[ INFO ] No local engine found. Initiating download."
-        curl -sL -o "llamafile" "$ENGINE_URL" &
+        curl -sL --fail -o "$ASSETS_BASE/llamafile" "$ENGINE_URL" &
         PID_ENG=$!
     else
         echo "[ INFO ] Engine binary already exists in the target folder."
@@ -63,23 +93,18 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     URL=$(echo "$line" | xargs)
     [[ -z "$URL" || "$URL" == \#* ]] && continue
 
-    URL_ARRAY+=("$URL")
     FILE_NAME=$(basename "$URL")
+    [ -z "$FIRST_MODEL_FILE" ] && FIRST_MODEL_FILE=$FILE_NAME
 
-    if [ ! -f "$REL/$FILE_NAME" ]; then
+    if [ ! -f "$MODEL_CACHE_DIR/$FILE_NAME" ]; then
         echo "[ INFO ] Queuing Download: $FILE_NAME"
-        curl -sL -o "$REL/$FILE_NAME" "$URL" &
+        curl -sL --fail -o "$MODEL_CACHE_DIR/$FILE_NAME" "$URL" &
         PIDS+=($!)
     else
         echo "[ INFO ] File already exists: $FILE_NAME (Skipping)"
     fi
-    
-    if [ -z "$FIRST_MODEL_FILE" ]; then
-        FIRST_MODEL_FILE=$FILE_NAME
-    fi
 done < "$MANIFEST_PATH"
 
-echo "[ INFO ] Total files detected in manifest: ${#URL_ARRAY[@]}"
 echo "[ INFO ] Monitoring background download tasks."
 while :; do
     ALIVE_COUNT=0
@@ -88,28 +113,46 @@ while :; do
         if kill -0 "$pid" 2>/dev/null; then ((ALIVE_COUNT++)); fi
     done
 
-    if [ -f "llamafile" ]; then
-        ENG_SIZE=$(du -h "llamafile" | awk '{print $1}')
-    elif [ -f "$REL/$TARGET_ENGINE" ]; then
-        ENG_SIZE=$(du -h "$REL/$TARGET_ENGINE" | awk '{print $1}')
-    fi
+    ENG_SIZE=$(du -h "$ASSETS_BASE/llamafile" 2>/dev/null | awk '{print $1}')
+    MDL_SIZE=$(du -hc "$MODEL_CACHE_DIR"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
 
-    MDL_SIZE=$(du -hc "$REL"/*.gguf 2>/dev/null | tail -1 | awk '{print $1}')
     echo -ne "\r\033[K[ PROGRESS ] Engine: ${ENG_SIZE:-0B} | Models: ${MDL_SIZE:-0B} | Active Tasks: $ALIVE_COUNT"
 
     [ $ALIVE_COUNT -eq 0 ] && break
     sleep 0.5
 done
-wait
-echo
-echo "[ SUCCESS ] All resources are ready."
+
+EXIT_CODE=0
+for pid in $PID_ENG "${PIDS[@]}"; do
+    [ -z "$pid" ] && continue
+    wait "$pid" || EXIT_CODE=$?
+done
+
+echo -e "\n[ INFO ] Validating downloaded resources..."
+if [ ! -f "$ASSETS_BASE/llamafile" ]; then
+    echo "[ ERROR ] Engine binary (llamafile) is missing. Download might have failed."
+    exit 1
+fi
+
+if [ -z "$FIRST_MODEL_FILE" ] || [ ! -f "$MODEL_CACHE_DIR/$FIRST_MODEL_FILE" ]; then
+    echo "[ ERROR ] Some downloads failed."
+    exit 1
+fi
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "[ ERROR ] One or more download tasks failed (Exit Code: $EXIT_CODE)."
+    exit 1
+fi
+
+echo -e "\n[ SUCCESS ] All resources are ready."
 
 if [ ! -f "$REL/$TARGET_ENGINE" ]; then
-    if [ -f "llamafile" ]; then
-        echo "[ INFO ] Copying engine binary to $REL."
-        cp "llamafile" "$REL/$TARGET_ENGINE"
-    fi
+    echo "[ INFO ] Copying engine binary to $REL..."
+    cp -f "$ASSETS_BASE/llamafile" "$REL/$TARGET_ENGINE"
 fi
+echo "[ INFO ] Copying LLM model to $REL..."
+cp -f "$MODEL_CACHE_DIR"/* "$REL/" 2>/dev/null
+
 
 echo "[ INFO ] Creating runtime executable script (ignite)."
 if [ "$OS_CHOICE" == "1" ]; then
@@ -120,6 +163,7 @@ chcp 65001 > nul
 cd /d "%~dp0"
 echo Starting Local LLM...
 $TARGET_ENGINE -m $FIRST_MODEL_FILE
+pause
 EOF
     echo "[ SUCCESS ] Windows batch file 'ignite.bat' has been created."
 else
@@ -134,4 +178,4 @@ EOF
     echo "[ SUCCESS ] Unix shell script 'ignite.sh' has been created."
 fi
 
-echo "[ SUCCESS ] BUILD COMPLETE AT ./${REL}/"
+echo "[ SUCCESS ] BUILD COMPLETE AT ${REL}"
